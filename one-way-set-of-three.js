@@ -4,9 +4,10 @@ const dicelib = require('./dicelib');
 const status = require('./status');
 
 const dice = 3;
-const minValue = 1;
-const maxValue = 6;
+const minValue = 0;
+const maxValue = 9;
 let bestMinOdds = 0.50001; // Starting threshold - try to beat even odds
+bestMinOdds = 0.5557;
 
 function compareRolls(dieIndex1, dieIndex2) {
     return dicelib.compareDieRollStrings(dieSides[dieIndex1], dieSides[dieIndex2]);
@@ -27,17 +28,53 @@ dicelib.rollDie(minValue, maxValue, die => {
 });
 console.log('Possible combinations:', dieSides.length);
 
-console.log('Eliminate entries that can not beat percentage:', bestMinOdds);
-dieSides = dieSides.filter((rolls, index) => {
-    for (let i = 0; i < dieSides.length; i += 1) {
-        if (compareRolls(index, i) >= bestMinOdds) {
-            return true;
-        }
-    }
+// [dieSidesIndex][dieSidesIndex] = percentageOfWins
+dieSideVsSide = [];
 
-    return false;
-});
-console.log('Possible combinations remaining:', dieSides.length);
+// [dieSidesIndex] = [indexOfUsableSide, indexOfUsableSide, ...]
+dieSideVsSideFavorable = [];
+console.log('Calculating odds');
+
+for (let a = 0; a < dieSides.length; a += 1) {
+    status.show(`${a} / ${dieSides.length}`);
+    dieSideVsSide[a] = [];
+
+    for (let b = 0; b < dieSides.length; b += 1) {
+        dieSideVsSide[a][b] = dicelib.compareDieRollStrings(dieSides[a], dieSides[b]);
+    }
+}
+
+status.clear();
+console.log('Eliminating below minimum threshold:', bestMinOdds);
+
+let loopAgain = true;
+let filterPass = 1;
+
+while (loopAgain) {
+    loopAgain = false;
+    for (let a = 0; a < dieSides.length;) {
+        const max = Math.max(...dieSideVsSide[a]);
+
+        if (max >= bestMinOdds) {
+            a += 1;
+        } else {
+            dieSides.splice(a, 1);
+
+            for (let x = 0; x < dieSideVsSide.length; x += 1) {
+                dieSideVsSide[x].splice(a, 1);
+            }
+
+            dieSideVsSide.splice(a, 1);
+            loopAgain = true;
+        }
+
+        status.show(`Pass ${filterPass}: ${a} / ${dieSides.length}`);
+    }
+    filterPass += 1;
+}
+
+status.clear();
+console.log('Final number of rolls:', dieSides.length);
 
 let bestMinOddsRollIndexes = [0, 0, 0];
 let bestAvgOdds = 0.0001;
@@ -47,13 +84,13 @@ let totalChecks = 0;
 for (let a = 0; a < dieSides.length - 2; a += 1) {
     for (let b = a; b < dieSides.length; b += 1) {
         status.show(`${dieSides.length}: ${a} ${b}`);
-        const oddsAB = compareRolls(a, b);
+        const oddsAB = dieSideVsSide[a][b];
 
         if (oddsAB >= bestMinOdds) {
             // This correctly says "c = a"
             for (let c = a; c < dieSides.length; c += 1) {
-                const oddsBC = compareRolls(b, c);
-                const oddsCA = compareRolls(c, a);
+                const oddsBC = dieSideVsSide[b][c];
+                const oddsCA = dieSideVsSide[c][a];
                 const minOdds = Math.min(oddsAB, oddsBC, oddsCA);
                 const avgOdds = (oddsAB + oddsBC + oddsCA) / 3;
                 totalChecks += 1;
@@ -78,6 +115,6 @@ for (let a = 0; a < dieSides.length - 2; a += 1) {
     }
 }
 
-console.log('Total checks:', totalChecks);
 status.clear();
+console.log('Total checks:', totalChecks);
 dicelib.showComparison('Best minimum odds', bestMinOddsRollIndexes, dieSides);
