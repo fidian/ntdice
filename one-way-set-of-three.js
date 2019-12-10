@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 
-const dicelib = require('./dicelib');
+const diceLib = require('./dice-lib');
 const status = require('./status');
 
 const dice = 3;
-const minValue = 0;
-const maxValue = 9;
+const minValue = 1;
+const maxValue = 6;
 let bestMinOdds = 0.50001; // Starting threshold - try to beat even odds
 bestMinOdds = 0.5557;
 
 function displayDuringProgress(label, indices) {
     status.clear();
-    dicelib.showComparison(label, indices, dieSides);
+    diceLib.showComparison(label, indices, dieSides);
 }
 
 let tallies = 0;
@@ -64,4 +64,4 @@ for (let a = 0; a < dieSides.length - 2; a += 1) {
 
 status.clear();
 console.log('Total checks:', totalChecks);
-dicelib.showComparison('Best minimum odds', bestMinOddsRollIndexes, dieSides);
+diceLib.showComparison('Best minimum odds', bestMinOddsRollIndexes, dieSides);
