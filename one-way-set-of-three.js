@@ -9,10 +9,6 @@ const maxValue = 9;
 let bestMinOdds = 0.50001; // Starting threshold - try to beat even odds
 bestMinOdds = 0.5557;
 
-function compareRolls(dieIndex1, dieIndex2) {
-    return dicelib.compareDieRollStrings(dieSides[dieIndex1], dieSides[dieIndex2]);
-}
-
 function displayDuringProgress(label, indices) {
     status.clear();
     dicelib.showComparison(label, indices, dieSides);
@@ -21,60 +17,11 @@ function displayDuringProgress(label, indices) {
 let tallies = 0;
 console.log('Min value on a side:', minValue);
 console.log('Max value on a side:', maxValue);
-console.log('Tabulating distinct die configurations');
-let dieSides = [];
-dicelib.rollDie(minValue, maxValue, die => {
-    dieSides.push(die.join(' '));
-});
+dieSides = diceLib.dieCombinations(minValue, maxValue);
 console.log('Possible combinations:', dieSides.length);
 
-// [dieSidesIndex][dieSidesIndex] = percentageOfWins
-dieSideVsSide = [];
-
-// [dieSidesIndex] = [indexOfUsableSide, indexOfUsableSide, ...]
-dieSideVsSideFavorable = [];
-console.log('Calculating odds');
-
-for (let a = 0; a < dieSides.length; a += 1) {
-    status.show(`${a} / ${dieSides.length}`);
-    dieSideVsSide[a] = [];
-
-    for (let b = 0; b < dieSides.length; b += 1) {
-        dieSideVsSide[a][b] = dicelib.compareDieRollStrings(dieSides[a], dieSides[b]);
-    }
-}
-
-status.clear();
-console.log('Eliminating below minimum threshold:', bestMinOdds);
-
-let loopAgain = true;
-let filterPass = 1;
-
-while (loopAgain) {
-    loopAgain = false;
-    for (let a = 0; a < dieSides.length;) {
-        const max = Math.max(...dieSideVsSide[a]);
-
-        if (max >= bestMinOdds) {
-            a += 1;
-        } else {
-            dieSides.splice(a, 1);
-
-            for (let x = 0; x < dieSideVsSide.length; x += 1) {
-                dieSideVsSide[x].splice(a, 1);
-            }
-
-            dieSideVsSide.splice(a, 1);
-            loopAgain = true;
-        }
-
-        status.show(`Pass ${filterPass}: ${a} / ${dieSides.length}`);
-    }
-    filterPass += 1;
-}
-
-status.clear();
-console.log('Final number of rolls:', dieSides.length);
+dieSideVsSide = diceLib.calculateOdds(dieSides);
+diceLib.filterMinimumThreshold(bestMinOdds, dieSides, dieSideVsSide);
 
 let bestMinOddsRollIndexes = [0, 0, 0];
 let bestAvgOdds = 0.0001;
