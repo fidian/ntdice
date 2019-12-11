@@ -10,17 +10,18 @@ let bestMinOdds = 0.50001; // Starting threshold - try to beat even odds
 
 function displayDuringProgress(label, indices) {
     status.clear();
-    diceLib.showComparison(label, indices, dieSides);
+    diceLib.showDoubledComparison(label, indices, dieSides, doubledRolls);
 }
 
 let tallies = 0;
 console.log('Min value on a side:', minValue);
 console.log('Max value on a side:', maxValue);
-dieSides = diceLib.dieCombinations(minValue, maxValue);
+const dieSides = diceLib.dieCombinations(minValue, maxValue);
+const doubledRolls = diceLib.doubleRolls(dieSides);
 console.log('Possible combinations:', dieSides.length);
 
-dieSideVsSide = diceLib.calculateOdds(dieSides);
-diceLib.filterMinimumThreshold(0, bestMinOdds, dieSides, dieSideVsSide);
+dieVsDie = diceLib.calculateDoubledOdds(doubledRolls);
+diceLib.filterMinimumThreshold(0, bestMinOdds, dieSides, dieVsDie, doubledRolls);
 
 let bestMinOddsRollIndexes = [0, 0, 0];
 let bestAvgOdds = 0.0001;
@@ -30,15 +31,15 @@ let totalChecks = 0;
 for (let a = 0; a < dieSides.length - 2; a += 1) {
     for (let b = a; b < dieSides.length; b += 1) {
         status.show(`${dieSides.length}: ${a} ${b}`);
-        const oddsAB = dieSideVsSide[a][b];
+        const oddsBA = dieVsDie[b][a];
 
-        if (oddsAB >= bestMinOdds) {
+        if (oddsBA >= bestMinOdds) {
             // This correctly says "c = a"
             for (let c = a; c < dieSides.length; c += 1) {
-                const oddsBC = dieSideVsSide[b][c];
-                const oddsCA = dieSideVsSide[c][a];
-                const minOdds = Math.min(oddsAB, oddsBC, oddsCA);
-                const avgOdds = (oddsAB + oddsBC + oddsCA) / 3;
+                const oddsCB = dieVsDie[c][b];
+                const oddsAC = dieVsDie[a][c];
+                const minOdds = Math.min(oddsBA, oddsCB, oddsAC);
+                const avgOdds = (oddsBA + oddsCB + oddsAC) / 3;
                 totalChecks += 1;
 
                 if (minOdds > bestMinOdds) {
@@ -63,4 +64,4 @@ for (let a = 0; a < dieSides.length - 2; a += 1) {
 
 status.clear();
 console.log('Total checks:', totalChecks);
-diceLib.showComparison('Best minimum odds', bestMinOddsRollIndexes, dieSides);
+diceLib.showDoubledComparison('Best minimum odds', bestMinOddsRollIndexes, dieSides, doubledRolls);

@@ -1,4 +1,4 @@
-const status = require('./status');
+const status = require("./status");
 
 function rollDie(min, max, cb) {
     for (let a = min; a <= max; a += 1) {
@@ -18,13 +18,13 @@ function rollDie(min, max, cb) {
 
 exports.dieCombinations = (minValue, maxValue) => {
     let dieSides = [];
-    console.log('Tabulating distinct die configurations');
+    console.log("Tabulating distinct die configurations");
 
-    rollDie(minValue, maxValue, die => {
+    rollDie(minValue, maxValue, (die) => {
         dieSides.push(die);
     });
 
-    console.log('Possible combinations:', dieSides.length);
+    console.log("Possible combinations:", dieSides.length);
 
     return dieSides;
 };
@@ -44,26 +44,86 @@ function compareRolls(rolls1, rolls2) {
 }
 
 exports.calculateOdds = (dieSides) => {
-    console.log('Calculating odds');
+    console.log("Calculating odds");
 
-    const dieSideVsSide = [];
+    const dieVsDie = [];
 
     for (let a = 0; a < dieSides.length; a += 1) {
         status.show(`${a} / ${dieSides.length}`);
-        dieSideVsSide[a] = [];
+        dieVsDie[a] = [];
 
         for (let b = 0; b < dieSides.length; b += 1) {
-            dieSideVsSide[a][b] = compareRolls(dieSides[a], dieSides[b]);
+            dieVsDie[a][b] = compareRolls(dieSides[a], dieSides[b]);
         }
     }
 
     status.clear();
 
-    return dieSideVsSide;
+    return dieVsDie;
+};
+
+function doubleOneRoll(sides) {
+    const result = {};
+
+    for (let a of sides) {
+        for (let b of sides) {
+            result[a + b] = 1 + (result[a + b] || 0);
+        }
+    }
+
+    return result;
 }
 
+exports.doubleRolls = (rolls) => {
+    const result = [];
+
+    for (let i = 0; i < rolls.length; i += 1) {
+        result[i] = doubleOneRoll(rolls[i]);
+    }
+
+    return result;
+};
+
+function compareDoubledRolls(rolls1, rolls2) {
+    let wins = 0;
+    let total = 0;
+
+    for (const [roll1, fact1] of Object.entries(rolls1)) {
+        const roll1int = +roll1;
+
+        for (const [roll2, fact2] of Object.entries(rolls2)) {
+            if (roll1int > +roll2) {
+                wins += fact1 * fact2;
+            }
+
+            total += fact1 * fact2;
+        }
+    }
+
+    return wins / total;
+}
+
+exports.calculateDoubledOdds = (doubledRolls) => {
+    console.log("Calculating doubled odds");
+
+    const dieVsDie = [];
+
+    for (let a = 0; a < doubledRolls.length; a += 1) {
+        status.show(`${a} / ${doubledRolls.length}`);
+        dieVsDie[a] = [];
+
+        for (let b = 0; b < doubledRolls.length; b += 1) {
+            dieVsDie[a][b] = compareDoubledRolls(doubledRolls[a], doubledRolls[b]);
+        }
+    }
+
+    status.clear();
+
+    return dieVsDie;
+};
+
 function roundPercent(n) {
-    return Math.round(n * 10000) / 100 + '%';
+    return Math.round(n * 10000) / 100 + "%";
 }
 
 exports.showComparison = (label, indices, dieSides) => {
@@ -78,38 +138,69 @@ exports.showComparison = (label, indices, dieSides) => {
         sumOdds += odds;
         minOdds = Math.min(minOdds, odds);
         const percent = roundPercent(odds);
-        bits.push(`[${index}] ${dieSides[index].join(',')} ${percent}`)
+        bits.push(`[${index}] ${dieSides[index].join(",")} ${percent}`);
     }
 
     const avgPct = roundPercent(sumOdds / indices.length);
     const minPct = roundPercent(minOdds);
     bits.push(`= avg ${avgPct} min ${minPct}`);
-    console.log(bits.join(' '));
-}
+    console.log(bits.join(" "));
+};
 
-exports.filterMinimumThreshold = (thresholdPct, dieSides, dieSideVsSide) => {
+exports.showDoubledComparison = (label, indices, dieSides, doubledRolls) => {
+    let bits = [`${label}:`];
+    let sumOdds = 0;
+    let minOdds = 1;
+
+    for (let i = 0; i < indices.length; i += 1) {
+        const index = indices[i];
+        const prevIndex = indices[i ? i - 1 : indices.length - 1];
+        const odds = compareDoubledRolls(doubledRolls[index], doubledRolls[prevIndex]);
+        sumOdds += odds;
+        minOdds = Math.min(minOdds, odds);
+        const percent = roundPercent(odds);
+        bits.push(`[${index}] ${dieSides[index].join(",")} ${percent}`);
+    }
+
+    const avgPct = roundPercent(sumOdds / indices.length);
+    const minPct = roundPercent(minOdds);
+    bits.push(`= avg ${avgPct} min ${minPct}`);
+    console.log(bits.join(" "));
+};
+
+exports.filterMinimumThreshold = (
+    startingIndex,
+    thresholdPct,
+    dieSides,
+    dieVsDie,
+    doubledRolls
+) => {
     let loopAgain = true;
     let filterPass = 0;
-    console.log('Current set size:', dieSides.length);
-    console.log('Eliminating below minimum threshold:', thresholdPct);
+    console.log("Current set size:", dieSides.length);
+    console.log("Eliminating below minimum threshold:", thresholdPct);
 
     while (loopAgain) {
         loopAgain = false;
         filterPass += 1;
 
-        for (let a = 0; a < dieSides.length;) {
-            const max = Math.max(...dieSideVsSide[a]);
+        for (let a = startingIndex; a < dieSides.length; ) {
+            const max = Math.max(...dieVsDie[a]);
 
             if (max >= thresholdPct) {
                 a += 1;
             } else {
                 dieSides.splice(a, 1);
 
-                for (let x = 0; x < dieSideVsSide.length; x += 1) {
-                    dieSideVsSide[x].splice(a, 1);
+                if (doubledRolls) {
+                    doubledRolls.splice(a, 1);
                 }
 
-                dieSideVsSide.splice(a, 1);
+                for (let x = startingIndex; x < dieVsDie.length; x += 1) {
+                    dieVsDie[x].splice(a, 1);
+                }
+
+                dieVsDie.splice(a, 1);
                 loopAgain = true;
             }
 
@@ -119,6 +210,6 @@ exports.filterMinimumThreshold = (thresholdPct, dieSides, dieSideVsSide) => {
         status.clear();
     }
 
-    console.log('Total filtering passes:', filterPass);
-    console.log('Current filtered set size:', dieSides.length);
-}
+    console.log("Total filtering passes:", filterPass);
+    console.log("Current filtered set size:", dieSides.length);
+};
